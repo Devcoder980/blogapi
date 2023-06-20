@@ -2,8 +2,6 @@ from flask import Flask, jsonify, request, g
 import sqlite3
 
 app = Flask(__name__)
-
-# Configuration
 DATABASE = 'blog.db'
 
 # Database functions
@@ -27,6 +25,19 @@ def execute_query(query, params=None):
         cursor.execute(query)
     get_db().commit()
     return cursor
+
+# Create SQLite database and table
+with app.app_context():
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS posts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL
+        )
+    ''')
+    db.commit()
 
 # Routes
 @app.route('/posts', methods=['GET'])
