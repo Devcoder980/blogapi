@@ -1,49 +1,34 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, g
 import sqlite3
-import threading
 
 app = Flask(__name__)
 
-# Create SQLite database and table
-def get_connection():
-    if 'connection' not in threading.current_thread().__dict__:
-        threading.current_thread().connection = sqlite3.connect('blog.db')
-    return threading.current_thread().connection
+# Configuration
+DATABASE = 'blog.db'
 
-def get_cursor():
-    if 'cursor' not in threading.current_thread().__dict__:
-        threading.current_thread().cursor = get_connection().cursor()
-    return threading.current_thread().cursor
+# Database functions
+def get_db():
+    db = getattr(g, '_database', None)
+    if db is None:
+        db = g._database = sqlite3.connect(DATABASE)
+    return db
 
-def close_connection(exception=None):
-    connection = getattr(threading.current_thread(), 'connection', None)
-    if connection is not None:
-        connection.close()
+@app.teardown_appcontext
+def close_db(exception=None):
+    db = getattr(g, '_database', None)
+    if db is not None:
+        db.close()
 
-
-app.teardown_appcontext(close_connection)
-
-with app.app_context():
-    cursor = get_cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS posts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            content TEXT NOT NULL
-        )
-    ''')
-    get_connection().commit()
-
-# Helper function to execute SQL queries
 def execute_query(query, params=None):
-    cursor = get_cursor()
+    cursor = get_db().cursor()
     if params:
         cursor.execute(query, params)
     else:
         cursor.execute(query)
-    get_connection().commit()
+    get_db().commit()
     return cursor
 
+# Routes
 @app.route('/posts', methods=['GET'])
 def get_posts():
     query = 'SELECT * FROM posts'
