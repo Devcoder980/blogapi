@@ -15,9 +15,11 @@ def get_cursor():
         threading.current_thread().cursor = get_connection().cursor()
     return threading.current_thread().cursor
 
-def close_connection(exception):
-    connection = threading.current_thread().connection
-    connection.close()
+def close_connection(exception=None):
+    connection = getattr(threading.current_thread(), 'connection', None)
+    if connection is not None:
+        connection.close()
+
 
 app.teardown_appcontext(close_connection)
 
